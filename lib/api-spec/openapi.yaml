@@ -1,15 +1,16 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Smart Parking Management API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: parking
+    description: Parking management operations
 paths:
   /healthz:
     get:
@@ -24,6 +25,161 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /parking/locations:
+    get:
+      operationId: listParkingLocations
+      tags: [parking]
+      summary: List parking locations
+      parameters:
+        - in: query
+          name: city
+          schema:
+            type: string
+        - in: query
+          name: vehicleType
+          schema:
+            type: string
+            enum: [car, bike, auto]
+      responses:
+        "200":
+          description: Parking locations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ParkingLocation"
+    post:
+      operationId: createParkingLocation
+      tags: [parking]
+      summary: Create parking location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkingLocationInput"
+      responses:
+        "201":
+          description: Created parking location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingLocation"
+  /parking/locations/{id}:
+    patch:
+      operationId: updateParkingLocation
+      tags: [parking]
+      summary: Update parking location
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParkingLocationUpdate"
+      responses:
+        "200":
+          description: Updated parking location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingLocation"
+    delete:
+      operationId: deleteParkingLocation
+      tags: [parking]
+      summary: Delete parking location
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted parking location
+  /parking/bookings:
+    get:
+      operationId: listBookings
+      tags: [parking]
+      summary: List bookings
+      parameters:
+        - in: query
+          name: phone
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [confirmed, active, completed, cancelled]
+      responses:
+        "200":
+          description: Bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [parking]
+      summary: Create booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingInput"
+      responses:
+        "201":
+          description: Created booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /parking/bookings/{id}:
+    patch:
+      operationId: updateBooking
+      tags: [parking]
+      summary: Update booking status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingUpdate"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+  /parking/summary:
+    get:
+      operationId: getParkingSummary
+      tags: [parking]
+      summary: Get parking dashboard summary
+      responses:
+        "200":
+          description: Parking summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParkingSummary"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +189,269 @@ components:
           type: string
       required:
         - status
-
+    VehicleType:
+      type: string
+      enum: [car, bike, auto]
+    BookingStatus:
+      type: string
+      enum: [confirmed, active, completed, cancelled]
+    ParkingLocation:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        address:
+          type: string
+        landmark:
+          type: string
+        operatorName:
+          type: string
+        totalSlots:
+          type: integer
+        availableSlots:
+          type: integer
+        hourlyRate:
+          type: number
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        openTime:
+          type: string
+        closeTime:
+          type: string
+        securityAvailable:
+          type: boolean
+        evCharging:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - city
+        - area
+        - address
+        - landmark
+        - operatorName
+        - totalSlots
+        - availableSlots
+        - hourlyRate
+        - vehicleType
+        - openTime
+        - closeTime
+        - securityAvailable
+        - evCharging
+        - createdAt
+    ParkingLocationInput:
+      type: object
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        address:
+          type: string
+        landmark:
+          type: string
+        operatorName:
+          type: string
+        totalSlots:
+          type: integer
+          minimum: 1
+        availableSlots:
+          type: integer
+          minimum: 0
+        hourlyRate:
+          type: number
+          minimum: 0
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        openTime:
+          type: string
+        closeTime:
+          type: string
+        securityAvailable:
+          type: boolean
+        evCharging:
+          type: boolean
+      required:
+        - name
+        - city
+        - area
+        - address
+        - landmark
+        - operatorName
+        - totalSlots
+        - availableSlots
+        - hourlyRate
+        - vehicleType
+        - openTime
+        - closeTime
+        - securityAvailable
+        - evCharging
+    ParkingLocationUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        address:
+          type: string
+        landmark:
+          type: string
+        operatorName:
+          type: string
+        totalSlots:
+          type: integer
+          minimum: 1
+        availableSlots:
+          type: integer
+          minimum: 0
+        hourlyRate:
+          type: number
+          minimum: 0
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        openTime:
+          type: string
+        closeTime:
+          type: string
+        securityAvailable:
+          type: boolean
+        evCharging:
+          type: boolean
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        locationId:
+          type: integer
+        locationName:
+          type: string
+        city:
+          type: string
+        area:
+          type: string
+        userName:
+          type: string
+        phone:
+          type: string
+        vehicleNumber:
+          type: string
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        startTime:
+          type: string
+        durationHours:
+          type: integer
+        amount:
+          type: number
+        paymentMode:
+          type: string
+          enum: [cash, upi]
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+        createdAt:
+          type: string
+      required:
+        - id
+        - locationId
+        - locationName
+        - city
+        - area
+        - userName
+        - phone
+        - vehicleNumber
+        - vehicleType
+        - startTime
+        - durationHours
+        - amount
+        - paymentMode
+        - status
+        - createdAt
+    BookingInput:
+      type: object
+      properties:
+        locationId:
+          type: integer
+        userName:
+          type: string
+        phone:
+          type: string
+        vehicleNumber:
+          type: string
+        vehicleType:
+          $ref: "#/components/schemas/VehicleType"
+        startTime:
+          type: string
+        durationHours:
+          type: integer
+          minimum: 1
+        paymentMode:
+          type: string
+          enum: [cash, upi]
+      required:
+        - locationId
+        - userName
+        - phone
+        - vehicleNumber
+        - vehicleType
+        - startTime
+        - durationHours
+        - paymentMode
+    BookingUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/BookingStatus"
+    ParkingSummary:
+      type: object
+      properties:
+        totalLocations:
+          type: integer
+        totalSlots:
+          type: integer
+        availableSlots:
+          type: integer
+        activeBookings:
+          type: integer
+        todayRevenue:
+          type: number
+        cityBreakdown:
+          type: array
+          items:
+            type: object
+            properties:
+              city:
+                type: string
+              locations:
+                type: integer
+              availableSlots:
+                type: integer
+            required:
+              - city
+              - locations
+              - availableSlots
+        recentBookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/Booking"
+      required:
+        - totalLocations
+        - totalSlots
+        - availableSlots
+        - activeBookings
+        - todayRevenue
+        - cityBreakdown
+        - recentBookings
