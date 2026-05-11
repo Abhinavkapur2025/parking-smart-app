@@ -1,4 +1,10 @@
-import { Router, type IRouter } from "express";
+import {
+  Router,
+  type IRouter,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 import { and, count, desc, eq, gte, sql } from "drizzle-orm";
 import {
   CreateBookingBody,
@@ -54,7 +60,11 @@ function toBooking(booking: BookingWithLocation) {
     durationHours: booking.durationHours,
     amount: booking.amount,
     paymentMode: booking.paymentMode as "cash" | "upi",
-    status: booking.status as "confirmed" | "active" | "completed" | "cancelled",
+    status: booking.status as
+      | "confirmed"
+      | "active"
+      | "completed"
+      | "cancelled",
     createdAt: toIso(booking.createdAt),
   };
 }
@@ -64,7 +74,9 @@ let seedPromise: Promise<void> | null = null;
 async function ensureSeedData() {
   if (!seedPromise) {
     seedPromise = (async () => {
-      const existing = await db.select({ value: count() }).from(parkingLocationsTable);
+      const existing = await db
+        .select({ value: count() })
+        .from(parkingLocationsTable);
       if ((existing[0]?.value ?? 0) > 0) {
         return;
       }
@@ -199,7 +211,10 @@ async function getBookingRows(filters?: { phone?: string; status?: string }) {
       createdAt: bookingsTable.createdAt,
     })
     .from(bookingsTable)
-    .innerJoin(parkingLocationsTable, eq(bookingsTable.locationId, parkingLocationsTable.id))
+    .innerJoin(
+      parkingLocationsTable,
+      eq(bookingsTable.locationId, parkingLocationsTable.id),
+    )
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(desc(bookingsTable.createdAt));
 
@@ -215,7 +230,9 @@ router.get("/parking/locations", async (req, res, next) => {
       conditions.push(eq(parkingLocationsTable.city, params.city));
     }
     if (params.vehicleType) {
-      conditions.push(eq(parkingLocationsTable.vehicleType, params.vehicleType));
+      conditions.push(
+        eq(parkingLocationsTable.vehicleType, params.vehicleType),
+      );
     }
 
     const locations = await db
@@ -234,8 +251,13 @@ router.post("/parking/locations", async (req, res, next) => {
   try {
     await ensureSeedData();
     const body = CreateParkingLocationBody.parse(req.body);
-    const [location] = await db.insert(parkingLocationsTable).values(body).returning();
-    res.status(201).json(ListParkingLocationsResponseItem.parse(toLocation(location)));
+    const [location] = await db
+      .insert(parkingLocationsTable)
+      .values(body)
+      .returning();
+    res
+      .status(201)
+      .json(ListParkingLocationsResponseItem.parse(toLocation(location)));
   } catch (error) {
     next(error);
   }
@@ -267,7 +289,9 @@ router.delete("/parking/locations/:id", async (req, res, next) => {
   try {
     await ensureSeedData();
     const params = DeleteParkingLocationParams.parse(req.params);
-    await db.delete(parkingLocationsTable).where(eq(parkingLocationsTable.id, params.id));
+    await db
+      .delete(parkingLocationsTable)
+      .where(eq(parkingLocationsTable.id, params.id));
     res.status(204).end();
   } catch (error) {
     next(error);
@@ -297,11 +321,15 @@ router.post("/parking/bookings", async (req, res, next) => {
         .where(eq(parkingLocationsTable.id, body.locationId));
 
       if (!location) {
-        throw Object.assign(new Error("Parking location not found"), { statusCode: 404 });
+        throw Object.assign(new Error("Parking location not found"), {
+          statusCode: 404,
+        });
       }
 
       if (location.availableSlots <= 0) {
-        throw Object.assign(new Error("No parking slots available"), { statusCode: 409 });
+        throw Object.assign(new Error("No parking slots available"), {
+          statusCode: 409,
+        });
       }
 
       const amount = location.hourlyRate * body.durationHours;
@@ -347,7 +375,9 @@ router.patch("/parking/bookings/:id", async (req, res, next) => {
         .where(eq(bookingsTable.id, params.id));
 
       if (!existing) {
-        throw Object.assign(new Error("Booking not found"), { statusCode: 404 });
+        throw Object.assign(new Error("Booking not found"), {
+          statusCode: 404,
+        });
       }
 
       const [updated] = await tx
@@ -363,7 +393,9 @@ router.patch("/parking/bookings/:id", async (req, res, next) => {
       ) {
         await tx
           .update(parkingLocationsTable)
-          .set({ availableSlots: sql`${parkingLocationsTable.availableSlots} + 1` })
+          .set({
+            availableSlots: sql`${parkingLocationsTable.availableSlots} + 1`,
+          })
           .where(eq(parkingLocationsTable.id, existing.locationId));
       }
 
@@ -439,17 +471,19 @@ router.get("/parking/summary", async (_req, res, next) => {
   }
 });
 
-router.use((error: unknown, req, res, _next) => {
-  const statusCode =
-    typeof error === "object" &&
-    error !== null &&
-    "statusCode" in error &&
-    typeof error.statusCode === "number"
-      ? error.statusCode
-      : 400;
-  const message = error instanceof Error ? error.message : "Request failed";
-  req.log.warn({ error }, "Parking API request failed");
-  res.status(statusCode).json({ message });
-});
+router.use(
+  (error: unknown, req: Request, res: Response, _next: NextFunction) => {
+    const statusCode =
+      typeof error === "object" &&
+      error !== null &&
+      "statusCode" in error &&
+      typeof error.statusCode === "number"
+        ? error.statusCode
+        : 400;
+    const message = error instanceof Error ? error.message : "Request failed";
+    req.log.warn({ error }, "Parking API request failed");
+    res.status(statusCode).json({ message });
+  },
+);
 
 export default router;
